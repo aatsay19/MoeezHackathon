@@ -28,31 +28,41 @@ logo / homepage hero is enough.
 
 ### 2.1 Color tokens
 
-Defined as CSS variables in `app/globals.css` and mapped in `tailwind.config.ts`.
-Light theme is the primary target; dark theme is a nice-to-have and, if built, must
-redefine every token (never leave a color defined only in one theme).
+**Implemented (Stage 1) in [`app/globals.css`](../app/globals.css)** as CSS variables
+on `:root` and `.dark`, surfaced to Tailwind utilities via `@theme inline`. Tailwind
+**v4** — there is no `tailwind.config.ts`. Values are authored in **oklch** to match
+the shadcn `radix-nova` base file. Light theme is the primary target; the `.dark`
+block is fully defined but the app currently defaults to light (`enableSystem`).
 
-| Token | Light value (HSL) | Role |
-|-------|-------------------|------|
-| `--background` | `40 30% 98%` | warm off-white page background |
-| `--foreground` | `215 25% 15%` | primary text |
-| `--card` | `0 0% 100%` | card surface |
-| `--card-foreground` | `215 25% 15%` | text on cards |
-| `--muted` | `40 12% 94%` | subtle fills, table stripes |
-| `--muted-foreground` | `215 12% 42%` | secondary text, metadata |
-| `--border` | `215 16% 88%` | hairlines, input borders |
-| `--input` | `215 16% 85%` | input border |
-| `--ring` | `168 62% 34%` | focus ring (matches primary) |
-| `--primary` | `168 62% 30%` | deep emerald/teal — brand, primary buttons, links |
-| `--primary-foreground` | `0 0% 100%` | text on primary |
-| `--secondary` | `40 14% 92%` | secondary buttons |
-| `--secondary-foreground` | `215 25% 20%` | |
-| `--accent` | `28 78% 52%` | warm amber — sparing highlights, "new", CTAs on dark hero |
-| `--accent-foreground` | `0 0% 100%` | |
-| `--destructive` | `0 72% 45%` | delete / error |
-| `--destructive-foreground` | `0 0% 100%` | |
-| `--success` | `152 55% 36%` | confirmations |
-| `--warning` | `36 90% 45%` | pending states |
+| Token | Light (oklch) | Role |
+|-------|---------------|------|
+| `--background` | `0.986 0.005 95` | warm off-white page background |
+| `--foreground` | `0.27 0.021 255` | primary text (deep slate) |
+| `--card` / `--popover` | `1 0 0` | pure white surfaces |
+| `--card-foreground` / `--popover-foreground` | `0.27 0.021 255` | text on surfaces |
+| `--primary` | `0.52 0.096 172` | deep emerald/teal — brand, primary buttons, links, focus ring |
+| `--primary-foreground` | `0.985 0.012 170` | text on primary |
+| `--secondary` | `0.955 0.008 95` | secondary buttons |
+| `--secondary-foreground` | `0.3 0.021 255` | |
+| `--muted` | `0.955 0.006 95` | subtle fills |
+| `--muted-foreground` | `0.52 0.018 255` | secondary text, metadata |
+| `--accent` | `0.95 0.01 172` | **neutral hover/active surface** — see note below |
+| `--accent-foreground` | `0.3 0.021 255` | |
+| `--border` / `--input` | `0.9 0.006 250` | hairlines, input borders |
+| `--ring` | `0.52 0.096 172` | focus ring (= primary) |
+| `--destructive` | `0.577 0.245 27.325` | delete / error (shadcn default) |
+| `--radius` | `0.625rem` | base radius; `--radius-sm/md/lg/xl` derive from it |
+
+**`--accent` is a NEUTRAL token, not the brand accent.** shadcn components use
+`bg-accent` / `text-accent-foreground` for hover and active states throughout
+(dropdown items, ghost buttons, etc.). Tinting it would colour every hover state.
+Where a warm highlight is genuinely wanted (rare), apply an explicit utility such as
+`text-amber-600` / `bg-amber-50`. This corrects the earlier draft that mapped
+`--accent` to amber.
+
+`--success` / `--warning` are not defined as core tokens; use Tailwind's
+`emerald-*` / `amber-*` scales directly, and the verification badge (`§4.3`) carries
+its own colours.
 
 **Rationale for the emerald/teal primary:** green carries positive, trustworthy,
 and culturally resonant associations for a Muslim audience without resorting to
@@ -64,9 +74,9 @@ badges `rounded-full`.
 
 ### 2.2 Typography
 
-One typeface: **Inter** (via `next/font/google`), or the Next default **Geist** if
-we want zero config. No secondary display font for the MVP — tighten headings with
-`tracking-tight` instead.
+**Implemented:** the Next default **Geist** (`next/font/google`), bound to
+`--font-sans`. `--font-heading` is aliased to the same family — no secondary display
+font for the MVP; tighten headings with `tracking-tight` and `font-heading`.
 
 | Style | Classes | Use |
 |-------|---------|-----|
@@ -275,9 +285,24 @@ list above (README §11).
 - `prefers-reduced-motion` disables non-essential transitions.
 - Page has one `<h1>`; headings are not skipped for styling.
 
-## 9. Design tokens → Tailwind
+## 9. Design tokens → Tailwind (as implemented, Stage 1)
 
-`tailwind.config.ts` extends `colors` from the CSS variables
-(`primary: 'hsl(var(--primary))'`, etc.), sets `borderRadius` from `--radius`, and
-adds the `container` centering. shadcn's `components.json` uses the "new-york" style,
-`baseColor: slate`, CSS variables enabled.
+Tailwind **v4**: no `tailwind.config.ts`. [`app/globals.css`](../app/globals.css)
+does the work:
+
+- `@import "tailwindcss"; @import "tw-animate-css"; @import "shadcn/tailwind.css";`
+- `@custom-variant dark (&:is(.dark *));` — dark mode via a `.dark` class, toggled by
+  `next-themes` (`ThemeProvider`, `attribute="class"`, `defaultTheme="light"`).
+- `@theme inline { --color-*: var(--*) ; --radius-*: … }` maps the CSS variables onto
+  utility names (`bg-primary`, `text-muted-foreground`, `rounded-xl`, …).
+- `:root` holds the light palette, `.dark` the dark palette (both complete).
+
+[`components.json`](../components.json): `style: "radix-nova"`, `rsc: true`,
+`iconLibrary: "lucide"`, `cssVariables: true`, `baseColor: "neutral"` (overridden by
+our palette above). `cn` comes from the `cn` package (a `twMerge(clsx())`
+drop-in), re-exported from [`lib/utils.ts`](../lib/utils.ts).
+
+Installed shadcn components (Stage 1): button, card, badge, input, textarea, label,
+select, sonner, sheet, dropdown-menu, avatar, separator, skeleton, tabs, dialog,
+alert. Add the rest (combobox/command, alert-dialog, tooltip, popover, pagination,
+form) as each feature stage first needs them.

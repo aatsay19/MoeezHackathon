@@ -35,21 +35,29 @@ This matches README §4–5 exactly.
 
 | Concern | Choice | Notes |
 |---------|--------|-------|
-| Framework | Next.js (latest stable), App Router | RSC for reads, Server Actions for writes |
-| Language | TypeScript, `strict` | shared types generated from the DB (`supabase gen types`) |
-| UI | React + Tailwind CSS + shadcn/ui + Lucide icons | see `design-system.md` |
+| Framework | **Next.js 16.3.4** (Turbopack default), App Router | RSC for reads, Server Actions for writes. Scaffolded Stage 1. |
+| Language | TypeScript, `strict` | DB types generated later via `supabase gen types`. `npm run typecheck` runs `next typegen` first (Next 16 emits the `LayoutProps`/`PageProps` globals). |
+| UI | React 19 + **Tailwind CSS v4** + shadcn/ui (`radix-nova` style) + Lucide icons | see `design-system.md` |
 | Data / Auth / Files | Supabase (Postgres, Auth, Storage) | one hosted project per environment |
 | Supabase SDK | `@supabase/supabase-js` + `@supabase/ssr` | cookie-based sessions in the App Router |
-| Validation | Zod | one schema per form, reused in the Server Action |
+| Validation | Zod v4 | one schema per form, reused in the Server Action |
 | Forms | `react-hook-form` + `@hookform/resolvers/zod` | client-side UX; server re-validates |
-| Toasts | `sonner` | success / error feedback |
+| Toasts | `sonner` (+ `next-themes`, pulled in by the shadcn toaster) | success / error feedback |
 | Hosting | Vercel | preview deploys per PR |
 | Migrations | Supabase CLI, SQL files in `supabase/migrations/` | `supabase db push` |
 | AI (Stage 7) | Anthropic Claude API | `claude-haiku-4-5-20251001` for low-latency extraction; `claude-sonnet-5` if quality needs it |
 | Tests | Vitest (unit: Zod schemas, match score), `tsc --noEmit`, ESLint | Playwright smoke test of the demo flow is a stretch goal |
 
-Google OAuth: add in Stage 1 only if it is a trivial Supabase config change;
-otherwise deferred (README §20).
+**Next.js 16 note:** Middleware is renamed **Proxy** — the file is `proxy.ts` at the
+repo root and the export is `proxy` (same functionality). `cookies()` / `headers()`
+are async. `next lint` is gone; ESLint runs directly (`npm run lint`).
+
+**Tailwind v4 note:** no `tailwind.config.ts`. Design tokens are CSS variables in
+`app/globals.css` (`:root` / `.dark`) surfaced to utilities via `@theme inline`. The
+shadcn setup also imports `shadcn/tailwind.css` and `tw-animate-css`.
+
+Google OAuth: deferred (product owner decision, 2026-09-05). Small Supabase config
+change; can be enabled in Stage 2 if time allows. Not wired in the Stage 1 scaffold.
 
 ## 3. Supabase client strategy
 
@@ -98,15 +106,17 @@ key or a raw SQL error.
 ## 5. Authentication & session
 
 - Email + password via Supabase Auth. Sign up, log in, log out, password reset.
-- `@supabase/ssr` stores the session in cookies; `middleware.ts` refreshes it on
-  every request and can gate `/app/*` authed routes.
+- `@supabase/ssr` stores the session in cookies; `proxy.ts` (Next 16's renamed
+  middleware) refreshes it on every request and, from Stage 2, gates authed-only
+  routes. The Stage 1 `proxy.ts` only refreshes the session and passes through
+  entirely when Supabase env vars are absent.
 - Onboarding: after first login, if `profiles.onboarded_at IS NULL`, force
   `/onboarding` — collect name, city, (optional) profession/skills, and offer
   "I also want to add my organization or business" → creates an `organizations`
   row + an `owner` membership in one Server Action.
 - Demo concession: Supabase "Confirm email" is disabled for the demo project (or
   seeded users are created with `email_confirm: true`) so sign-up is instant on
-  stage. Documented; flagged as an open question in `product-requirements.md` §9.
+  stage. Confirmed by the product owner (`product-requirements.md` §9).
 
 ## 6. Authorization model
 
@@ -170,47 +180,50 @@ hundreds of rows.
 - **Key handling:** `ANTHROPIC_API_KEY` is server-only. No streaming to the client
   is required for the MVP.
 
-## 10. Folder structure (proposed)
+## 10. Folder structure
+
+`✓` = exists after Stage 1. Unmarked entries are added in their feature stage.
 
 ```
+proxy.ts                   ✓ Supabase session refresh (Next 16 "middleware")
+next.config.ts             ✓ image remotePatterns for Supabase Storage
 app/
-  layout.tsx                 root layout, nav, providers (Toaster)
-  page.tsx                   homepage
-  (marketing)/               public marketing pages if any
+  layout.tsx               ✓ ThemeProvider + SiteHeader + SiteFooter + Toaster
+  page.tsx                 ✓ homepage (hero, CTAs, how-it-works, browse-by-type)
+  globals.css              ✓ Tailwind v4 tokens (:root / .dark, @theme inline)
+  not-found.tsx error.tsx loading.tsx   ✓
   opportunities/
-    page.tsx                 feed
+    page.tsx               ✓ (placeholder)   new/page.tsx  ✓ (placeholder)
     [id]/page.tsx            detail
-    new/page.tsx             create form (+ AI pre-fill, Stage 7)
     [id]/edit/page.tsx
     actions.ts               create / update / delete / respond
   organizations/
-    page.tsx  [slug]/page.tsx  new/  [slug]/edit/  actions.ts
+    page.tsx  ✓             [slug]/page.tsx   new/page.tsx   [slug]/edit/page.tsx  actions.ts
   people/
-    page.tsx  [id]/page.tsx
-  search/page.tsx
-  onboarding/page.tsx  actions.ts
-  (app)/                     authed area
-    profile/  settings/  my/opportunities/  my/responses/
-  admin/verification/page.tsx  actions.ts
-  auth/  login/ signup/ reset/ callback/route.ts
-  api/ai/structure/route.ts  api/cron/expire/route.ts
+    page.tsx  ✓             [id]/page.tsx
+  search/page.tsx           ✓ (placeholder)
+  onboarding/page.tsx       ✓ (placeholder)   onboarding/actions.ts
+  profile/ ✓  settings/ ✓  my/opportunities/ ✓  my/responses/ ✓   (placeholders)
+  admin/verification/page.tsx  ✓ (placeholder)   admin/verification/actions.ts
+  login/ ✓  signup/ ✓  reset/ ✓ (placeholders)   auth/callback/route.ts
+  api/ai/structure/route.ts   api/cron/expire/route.ts
 components/
-  ui/                        shadcn primitives
+  ui/                      ✓ shadcn primitives
+  site-header.tsx site-footer.tsx theme-provider.tsx page-shell.tsx coming-soon.tsx  ✓
   opportunity/ organization/ profile/ common/
 lib/
-  supabase/{client,server,admin}.ts
+  supabase/{client,server,admin}.ts   ✓
+  env.ts                   ✓ public config + isSupabaseConfigured()
+  constants.ts             ✓ opportunity types, actions, cities, skills, nav
+  utils.ts                 ✓ re-exports cn
   validation/                zod schemas
   match.ts                   scoring function
-  constants.ts               opportunity types, skill suggestions, cities
-  types.ts                   DB types (generated) + view models
+  types.ts                   DB types (supabase gen types) + view models
 supabase/
-  migrations/*.sql
-  config.toml
+  migrations/*.sql  config.toml
 scripts/
   seed.ts  reset.ts
-docs/
-  product-requirements.md architecture.md database-schema.md
-  design-system.md implementation-plan.md risks.md
+docs/                      ✓ the six Stage 0 documents
 ```
 
 ## 11. Environment variables

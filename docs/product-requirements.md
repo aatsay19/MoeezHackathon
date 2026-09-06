@@ -159,21 +159,19 @@ If no, it does not belong in the MVP.
 | 7 | Verification states include `pending` | Implies a request flow. | Manager clicks "Request verification" (→ `pending`); admin approves (→ `verified`). `profiles.role = 'admin'` gates approval. |
 | 8 | "Administrator can manually mark verified" | No admin concept elsewhere in the spec. | Minimal: a boolean-ish `role` column on `profiles`; a single server-guarded `/admin/verification` page. Not a dashboard. |
 
-## 9. Open questions for the product owner
+## 9. Open questions — resolved by the product owner (2026-09-05)
 
-These do not block Stage 0, but confirm before Stage 2:
-
-1. **Email visibility.** Confirm it is acceptable that a poster sees a responder's
-   email (from `auth.users`, surfaced via a server action) after they respond.
-   Alternative: show only name + profession + a "the platform will connect you"
-   placeholder (weaker demo).
-2. **Onboarding.** Is "create an org during onboarding" enough, or do we also need an
-   "add me to an existing org" request flow for the MVP? (Recommended: no — seed the
-   memberships.)
-3. **Auth email confirmation.** For the demo we plan to disable Supabase email
-   confirmation (or pre-confirm seeded users) so sign-up is instant on stage. OK?
-4. **Google OAuth.** Add in Stage 1 if it is a 15-minute change, otherwise defer.
-   Agree?
+1. **Email visibility.** ✅ Confirmed. After a person responds, the poster may see
+   that responder's email (read from `auth.users` via an authorised server action).
+   The response UI must state this plainly before the user submits.
+2. **Onboarding.** ✅ Keep it minimal. "Create an org during onboarding" is enough
+   for the MVP; there is **no** "join an existing org" request flow. Additional
+   `organization_members` are added by seed data or directly by a manager.
+3. **Auth email confirmation.** ✅ Disabled for now. The demo Supabase project turns
+   off "Confirm email"; seeded users are created pre-confirmed.
+4. **Google OAuth.** ✅ Deferred. It is a small Supabase config change and can be
+   switched on in Stage 2 if time allows; not a blocker and not in the critical
+   path. (Stage 1 scaffold does not wire it.)
 
 ## 10. Traceability to the judging rubric
 
