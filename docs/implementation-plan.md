@@ -33,32 +33,60 @@ Each stage lists: goal, tasks, dependencies, acceptance criteria, deferred items
 
 ---
 
-### STAGE 1 — Project scaffolding
+### STAGE 1 — Project scaffolding  ✅ COMPLETE (2026-09-05)
 
 **Goal:** a running, deployable Next.js app with the design system in place and
 Supabase clients wired, no business features.
 
-**Tasks**
-- `create-next-app` (TypeScript, App Router, Tailwind, ESLint, `src/`-less `app/`).
-- `tsconfig` strict; path alias `@/*`.
-- Install and configure shadcn/ui ("new-york", slate, CSS variables); add the
-  component set from `design-system.md` §3.
-- `app/globals.css` color tokens; `tailwind.config.ts` token mapping; fonts via
-  `next/font`.
-- `lib/supabase/{client,server,admin}.ts` (`admin.ts` → `import 'server-only'`).
-- `middleware.ts` for session refresh (no route gating yet).
-- `.env.example`; wire Vercel project + a Supabase project (dev).
-- Root layout: top nav shell, mobile `Sheet`, `<Toaster />`, container.
-- Placeholder pages for every route in `design-system.md` §6 (static "coming soon").
-- `lib/constants.ts`: opportunity type map, action map, city list, skill suggestions.
-- Scripts: `typecheck`, `lint`, `format`.
+**Done**
+- `create-next-app` → **Next.js 16.3.4**, React 19, App Router, no `src/`, `@/*`
+  alias, Turbopack (default). `tsconfig` strict (from the scaffold).
+- shadcn/ui via `shadcn@4.21` — `radix-nova` style, Lucide, CSS variables. Added:
+  button, card, badge, input, textarea, label, select, sonner, sheet,
+  dropdown-menu, avatar, separator, skeleton, tabs, dialog, alert.
+- **Tailwind v4** (no `tailwind.config.ts`). Brand palette (emerald primary, warm
+  off-white ground) authored in `app/globals.css` `:root` / `.dark`, mapped via
+  `@theme inline`. Fonts: Geist via `next/font` bound to `--font-sans` /
+  `--font-heading`.
+- `lib/supabase/{client,server,admin}.ts` — `admin.ts` starts with
+  `import "server-only"` and reads the service-role key itself (no secret
+  reference in `lib/env.ts`). `lib/env.ts` for public config + `isSupabaseConfigured`.
+- **`proxy.ts`** (Next 16's renamed middleware) refreshes the Supabase session;
+  passes through when env is unset. Route gating deferred to Stage 2.
+- `.env.example`; `next.config.ts` image `remotePatterns` for Supabase Storage.
+- Root layout: `ThemeProvider` (light default) + `SiteHeader` (desktop nav +
+  mobile `Sheet`) + `SiteFooter` + `<Toaster />`. `PageShell` / `PageHeader`
+  helpers. Real homepage (hero, 2 CTAs, "how it works", browse-by-type).
+- `not-found.tsx`, `error.tsx`, `loading.tsx` (skeleton).
+- Placeholder ("coming soon") pages for every **static** route in
+  `design-system.md` §6.
+- `lib/constants.ts`: opportunity type/action map, verification meta, city list,
+  skill suggestions, nav.
+- Scripts: `dev`, `build`, `start`, `lint`, `typecheck` (`next typegen && tsc`),
+  `format` / `format:check` (Prettier). `.prettierrc.json`, `.prettierignore`.
 
-**Dependencies:** none.
+**Acceptance — met**
+- `npm run typecheck`, `npm run lint`, `npm run format:check`, `npm run build` all
+  clean. Build prerenders 16 routes; Proxy detected.
+- `npm run dev`: `/`, `/opportunities`, `/login` → 200; unknown route → 404;
+  homepage `<title>` and hero copy render; no server errors/warnings in the log.
+- Service-role grep: `SUPABASE_SERVICE_ROLE_KEY` / `createAdminClient` appear only
+  in `lib/supabase/admin.ts` (which is `server-only`).
 
-**Acceptance**
-- `npm run build`, `npm run typecheck`, `npm run lint` all pass clean.
-- App deploys to Vercel; homepage shell renders on desktop + mobile.
-- No service-role key referenced in any client component (grep check).
+**Deviations from the original plan** (all reflected in `architecture.md` §2 and
+`design-system.md` §2.1 / §9):
+- Next.js **16** not 15 → `middleware.ts` is now **`proxy.ts`**; `typecheck`
+  runs `next typegen` first for the generated `LayoutProps`/`PageProps` types.
+- Tailwind **v4** → no `tailwind.config.ts`; tokens live in `globals.css`; values
+  in **oklch**.
+- shadcn is the newer **`radix-nova`** style; `cn` from the `cn` package;
+  `next-themes` added (dependency of the shadcn toaster).
+- `--accent` kept **neutral** (shadcn uses it for hover states); brand amber is
+  applied ad hoc, not as a token.
+- Placeholders cover **static** routes only. Dynamic routes (`[id]`, `[slug]`,
+  `[id]/edit`, `[slug]/edit`, `auth/callback`) are created in their feature stages.
+- Vercel + Supabase projects not provisioned in this session (no credentials);
+  `.env.example` documents what they need. Deploy verification moves to Stage 2.
 
 **Deferred:** all data, all auth flows, all forms.
 
@@ -79,8 +107,9 @@ Supabase clients wired, no business features.
 - `supabase gen types typescript` → `lib/types.ts`.
 - Auth pages: sign up, log in, log out, password reset request + update;
   `app/auth/callback/route.ts`.
-- `middleware.ts` gates `(app)/*`, `/onboarding`, `/opportunities/new`,
-  `/organizations/new`, `/admin/*`.
+- `proxy.ts` gates authed routes: `/onboarding`, `/opportunities/new`,
+  `/organizations/new`, `/opportunities/*/edit`, `/organizations/*/edit`, `/my/*`,
+  `/profile`, `/settings`, `/admin/*`.
 - Onboarding page + Server Action: complete `profiles`, optionally create an
   organization + `owner` membership.
 - `scripts/seed.ts` + `scripts/reset.ts`; `npm run db:seed`, `npm run db:reset`
